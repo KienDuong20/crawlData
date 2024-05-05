@@ -1,21 +1,21 @@
 import { createPlaywrightRouter, Dataset } from "crawlee";
 import moment from "moment";
 
-// createPlaywrightRouter() is only a helper to get better
-// intellisense and typings. You can use Router.create() too.
+// CAFE F
 let currentDate = new Date();
 export const router = createPlaywrightRouter();
 
 // This replaces the request.label === DETAIL branch of the if clause.
-router.addHandler("DETAIL", async ({ request, page, log }) => {
+router.addHandler("DETAIL_CAFEF", async ({ request, page, log }) => {
   log.debug(`Extracting data: ${request.url}`);
   // const urlPart = request.url.split('/').slice(-1); // ['sennheiser-mke-440-professional-stereo-shotgun-microphone-mke-440']
   // const manufacturer = urlPart[0].split('-')[0]; // 'sennheiser'
 
   // const title = await page.locator('.totalcontentdetail > h1').textContent();
-  let title = (await page.locator(".totalcontentdetail > h1").textContent())
-    .trim()
-    .replace(/\n/g, "");
+  let title = await page.locator(".totalcontentdetail > h1").textContent();
+  let resultTitle = title.replace(/[\/\s]+/g, " ");
+  // .trim();
+  // .replace(/\n/g, "");
   const timeElement = await page.locator(".dateandcat > span").first();
   const time = await timeElement.textContent();
   const datePart = time.split(" - ")[0].trim();
@@ -25,12 +25,13 @@ router.addHandler("DETAIL", async ({ request, page, log }) => {
   if (date === datePart) {
     const results = {
       url: request.url,
-      title,
-      time: datePart,
+      title: resultTitle.trim(),
+      time: time,
     };
 
     log.debug(`Saving data: ${request.url}`);
     await Dataset.pushData(results);
+    // await Dataset.pushData(results);
     // if(Number(results?.currentPrice) < 500) {
     //     log.debug(`Saving data: ${request.url}`);
     //     await Dataset.pushData(results);
@@ -45,12 +46,17 @@ router.addHandler("DETAIL", async ({ request, page, log }) => {
 
 router.addDefaultHandler(async ({ request, page, enqueueLinks, log }) => {
   log.debug(`Enqueueing categories from page: ${request.url}`);
+
   // This means we're on the start page, with no label.
   // On this page, we just want to enqueue all the category pages.
+  await Promise.all([
+    await page.waitForSelector("div.firstitem.wp100.clearfix .hl-info .time"),
+    await page.waitForSelector("div.cate-hl-row2.mgt20 .big"),
+    await page.waitForSelector("div.tlitem.box-category-item"),
+  ]);
 
-  await page.waitForSelector("div.tlitem.box-category-item");
   await enqueueLinks({
-    selector: "div.tlitem.box-category-item > h3 > a",
-    label: "DETAIL",
+    selector: "div.firstitem.wp100.clearfix .hl-info > h2 > a, div.cate-hl-row2.mgt20 .big > h3 > a, div.tlitem.box-category-item > h3 > a",
+    label: "DETAIL_CAFEF",
   });
 });

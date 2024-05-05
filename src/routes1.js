@@ -1,56 +1,47 @@
 import { createPlaywrightRouter, Dataset } from "crawlee";
 import moment from "moment";
 
-// createPlaywrightRouter() is only a helper to get better
-// intellisense and typings. You can use Router.create() too.
+// MEKONG ASIA
 let currentDate = new Date();
-export const router = createPlaywrightRouter();
+export const router1 = createPlaywrightRouter();
 
 // This replaces the request.label === DETAIL branch of the if clause.
-router.addHandler("DETAIL", async ({ request, page, log }) => {
+router1.addHandler("DETAIL_MEKONG", async ({ request, page, log }) => {
   log.debug(`Extracting data: ${request.url}`);
-  // const urlPart = request.url.split('/').slice(-1); // ['sennheiser-mke-440-professional-stereo-shotgun-microphone-mke-440']
-  // const manufacturer = urlPart[0].split('-')[0]; // 'sennheiser'
+  // Extract the title text
+  const titleElement = await page.locator(".detail__header > h1");
+  const title = await titleElement.textContent();
 
-  // const title = await page.locator('.totalcontentdetail > h1').textContent();
-  let title = (await page.locator(".totalcontentdetail > h1").textContent())
-    .trim()
-    .replace(/\n/g, "");
-  const timeElement = await page.locator(".dateandcat > span").first();
+  const timeElement = await page.locator(".time").first();
   const time = await timeElement.textContent();
-  const datePart = time.split(" - ")[0].trim();
+  let resultTime = null;
+  if (time.includes("trước")) {
+    resultTime = moment(currentDate).format("DD/MM/YYYY");
+  } else {
+    const timeParts = time.split(" ");
+    resultTime = timeParts[0];
+  }
 
-  // const time = await page.locator('.dateandcat.pdate').textContent();
-  const date = moment(currentDate).format("DD-MM-YYYY");
-  if (date === datePart) {
+  const date = moment(currentDate).format("DD/MM/YYYY");
+  if (date === resultTime) {
     const results = {
       url: request.url,
-      title,
-      time: datePart,
+      title: title.trim(),
+      time: time,
     };
-
     log.debug(`Saving data: ${request.url}`);
     await Dataset.pushData(results);
-    // if(Number(results?.currentPrice) < 500) {
-    //     log.debug(`Saving data: ${request.url}`);
-    //     await Dataset.pushData(results);
-    // }
   } else {
     console.log("date not between");
   }
 });
 
-// This is a fallback route which will handle the start URL
-// as well as the LIST labeled URLs.
-
-router.addDefaultHandler(async ({ request, page, enqueueLinks, log }) => {
+router1.addDefaultHandler(async ({ request, page, enqueueLinks, log }) => {
   log.debug(`Enqueueing categories from page: ${request.url}`);
-  // This means we're on the start page, with no label.
-  // On this page, we just want to enqueue all the category pages.
 
-  await page.waitForSelector("div.tlitem.box-category-item");
+  await page.waitForSelector("article.story");
   await enqueueLinks({
-    selector: "div.tlitem.box-category-item > h3 > a",
-    label: "DETAIL",
+    selector: "article.story > a",
+    label: "DETAIL_MEKONG",
   });
 });
